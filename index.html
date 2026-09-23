@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d14">
+<title>CASE RUSH — Case Opening Simulator</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080a10;color:#fff;font-family:Inter,Arial,sans-serif}
+.wrap{max-width:1000px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{margin:0;font-size:28px}.balance{background:#141824;border:1px solid #2a3042;padding:10px 14px;border-radius:14px}
+.gold{color:#ffd34d;font-weight:800}.sub{color:#8f98ad;margin:6px 0 20px}
+.cases{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:#111520;border:1px solid #252c3d;border-radius:18px;padding:16px;box-shadow:0 10px 30px #0005}
+.case-art{height:130px;border-radius:14px;display:grid;place-items:center;font-size:54px;margin-bottom:12px;background:linear-gradient(135deg,#171c31,#30234b)}
+.card:nth-child(2) .case-art{background:linear-gradient(135deg,#102a36,#174d5d)}
+.card:nth-child(3) .case-art{background:linear-gradient(135deg,#30200e,#624315)}
+button{border:0;border-radius:12px;padding:12px 15px;font-weight:800;cursor:pointer;color:#090b10;background:#ffd34d;width:100%;margin-top:10px}
+button:disabled{opacity:.45;cursor:not-allowed}.price{color:#aab2c4;font-size:13px}.odds{font-size:12px;color:#7f899d;margin-top:8px}
+.panel{margin-top:18px;background:#0f131d;border:1px solid #252c3d;border-radius:18px;padding:16px;overflow:hidden}
+.reel{height:125px;display:flex;gap:10px;align-items:center;overflow:hidden;position:relative;background:#090c13;border-radius:14px;padding:10px}
+.reel:after{content:"";position:absolute;left:50%;top:0;bottom:0;width:3px;background:#ffd34d;box-shadow:0 0 14px #ffd34d;transform:translateX(-50%)}
+.item{min-width:150px;height:100px;border-radius:12px;border:1px solid #30384c;background:#171c28;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:8px;font-size:13px}
+.item small{margin-top:6px}.common{border-color:#596273}.rare{border-color:#42a5ff}.epic{border-color:#b45cff}.legendary{border-color:#ff9b35}.mythic{border-color:#ff477e}
+.result{text-align:center;min-height:58px;padding-top:12px;font-size:18px}.muted{color:#8791a5}
+.inventory{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-top:12px}
+.inv{background:#151a25;border:1px solid #293145;border-radius:12px;padding:12px}.qty{float:right;color:#ffd34d;font-weight:800}
+.reset{background:#242a38;color:#fff;width:auto;float:right;margin:0}
+@media(max-width:720px){.cases{grid-template-columns:1fr}.case-art{height:110px}.wrap{padding:12px}h1{font-size:22px}.balance{font-size:14px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div><h1>CASE RUSH</h1><div class="sub">Симулятор открытия кейсов • только виртуальные предметы</div></div>
+  <div class="balance">🪙 <span id="balance" class="gold">1000</span></div></div>
+
+  <div class="cases">
+    <div class="card"><div class="case-art">⚡</div><h2>Neon Case</h2><div class="price">Ключ: 100 🪙</div><div class="odds">Обычный 55% · Редкий 28% · Эпик 12% · Легендарный 4% · Мифический 1%</div><button onclick="openCase(100,'neon')">Открыть</button></div>
+    <div class="card"><div class="case-art">🌌</div><h2>Cyber Case</h2><div class="price">Ключ: 180 🪙</div><div class="odds">Обычный 45% · Редкий 32% · Эпик 15% · Легендарный 7% · Мифический 1%</div><button onclick="openCase(180,'cyber')">Открыть</button></div>
+    <div class="card"><div class="case-art">👑</div><h2>Gold Case</h2><div class="price">Ключ: 300 🪙</div><div class="odds">Обычный 35% · Редкий 35% · Эпик 18% · Легендарный 10% · Мифический 2%</div><button onclick="openCase(300,'gold')">Открыть</button></div>
+  </div>
+
+  <div class="panel">
+    <h3>🎰 Открытие</h3>
+    <div id="reel" class="reel"><div class="muted" style="width:100%;text-align:center">Выбери кейс</div></div>
+    <div id="result" class="result muted">Здесь появится выигранный предмет</div>
+  </div>
+
+  <div class="panel">
+    <button class="reset" onclick="resetGame()">Сбросить</button>
+    <h3>🎒 Инвентарь</h3>
+    <div id="inventory" class="inventory"><div class="muted">Пока пусто</div></div>
+  </div>
+</div>
+
+<script>
+const data={
+ neon:[
+  ['Pulse Knife','mythic'],['Vortex Blaster','legendary'],['Neon Fang','epic'],['Cyber Pistol','rare'],['Street Pulse','common'],['Night Grid','common']
+ ],
+ cyber:[
+  ['Void Reaper','mythic'],['Quantum Rifle','legendary'],['Chrome Phantom','epic'],['Blue Circuit','rare'],['Digital Ash','common'],['Data Storm','common']
+ ],
+ gold:[
+  ['Golden Crown','mythic'],['Solar Blade','legendary'],['Royal Vector','epic'],['Gold Circuit','rare'],['Bronze Rush','common'],['Dust Runner','common']
+ ]};
+const weights={common:55,rare:28,epic:12,legendary:4,mythic:1};
+let balance=Number(localStorage.getItem('cr_balance')??1000);
+let inv=JSON.parse(localStorage.getItem('cr_inv')||'{}');
+let busy=false;
+
+function save(){localStorage.setItem('cr_balance',balance);localStorage.setItem('cr_inv',JSON.stringify(inv));}
+function render(){
+ document.getElementById('balance').textContent=balance;
+ const el=document.getElementById('inventory');
+ const keys=Object.keys(inv);
+ el.innerHTML=keys.length?keys.map(k=>`<div class="inv"><span class="qty">x${inv[k].qty}</span><b>${k}</b><br><small class="${inv[k].rarity}">${label(inv[k].rarity)}</small></div>`).join(''):'<div class="muted">Пока пусто</div>';
+}
+function label(r){return ({common:'Обычный',rare:'Редкий',epic:'Эпический',legendary:'Легендарный',mythic:'Мифический'})[r]}
+function pickRarity(){
+ let n=Math.random()*100,s=0;
+ for(const [r,w] of Object.entries(weights)){s+=w;if(n<s)return r}
+ return 'common';
+}
+function pickItem(arr,r){const same=arr.filter(x=>x[1]===r);return (same.length?same:arr)[Math.floor(Math.random()*(same.length?same.length:arr.length))]}
+function openCase(cost,type){
+ if(busy)return;
+ if(balance<cost){document.getElementById('result').innerHTML='Недостаточно виртуальных монет';return}
+ busy=true;balance-=cost;save();render();
+ const targetR=pickRarity(), target=pickItem(data[type],targetR);
+ const reel=document.getElementById('reel');
+ let items=[];
+ for(let i=0;i<22;i++){let r=pickRarity();items.push(pickItem(data[type],r))}
+ items[18]=target;
+ reel.innerHTML=items.map(x=>`<div class="item ${x[1]}"><b>${x[0]}</b><small>${label(x[1])}</small></div>`).join('');
+ reel.scrollLeft=0;
+ const distance=18*160-((reel.clientWidth/2)-75);
+ reel.scrollTo({left:distance,behavior:'smooth'});
+ setTimeout(()=>{
+   inv[target[0]]={rarity:target[1],qty:(inv[target[0]]?.qty||0)+1};
+   save();render();busy=false;
+   document.getElementById('result').innerHTML=`🎉 <b>${target[0]}</b> — <span class="${target[1]}">${label(target[1])}</span>`;
+ },2300);
+}
+function resetGame(){if(confirm('Сбросить баланс и инвентарь?')){balance=1000;inv={};save();render();document.getElementById('reel').innerHTML='<div class="muted" style="width:100%;text-align:center">Выбери кейс</div>';document.getElementById('result').textContent='Здесь появится выигранный предмет'}}
+render();
+</script>
+</body>
+</html>
